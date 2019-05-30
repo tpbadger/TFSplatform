@@ -54,7 +54,7 @@ float pressureHistory[NUM_SENSORS];
 boolean flagHistoryExists=false;
 
 boolean flagShowAddress=false;
-boolean flagShowPressure=false;
+boolean flagShowPressure=true;
 boolean flagShowTemperature=false;
 
 void initialize() {
@@ -126,15 +126,12 @@ void checkAddresses()
                 Wire.requestFrom(temp_add>>1, 1);
             }
         }
-        Serial.println(']');
     }
 }
 
 void setup () {
     Wire.begin();
-    Serial.begin(115200);
-
-    while (!Serial.available());
+    Serial.begin(9600);
 
     checkAddresses(); // check how many sensors are connected
 
@@ -188,7 +185,6 @@ void loop() {
 
     initialize();
 
-    Serial.print('[');
     for(int i=0;i<addressLength;i++)
     {
         if (i>0){
@@ -214,9 +210,6 @@ void loop() {
         // ------------------------------
         // Start output to the serial port
 
-        Serial.print('[');
-
-        Serial.print('[');
         // Print out sensor ID value if the flag was set
         if (flagShowAddress){
             Serial.print(addressArray[i],HEX);
@@ -238,21 +231,21 @@ void loop() {
             }
             Serial.print(oTemp,PRECISION);
         }
-        Serial.print(']');
     }
-    Serial.println(']');
+
+    Serial.println();
 
     // End output to the serial port
     // ------------------------------
     flagHistoryExists=true;
 
     // Listen to the commands from the serial port
-    if (Serial.available()){
-        byte inByte = (byte)
-                Serial.read();
-        if (inByte=='n') { flagShowAddress = !flagShowAddress; }
-        if (inByte=='p') { flagShowPressure = !flagShowPressure; }
-        if (inByte=='t') { flagShowTemperature = !flagShowTemperature; }
-
-    }
+//    if (Serial.available()){
+//        byte inByte = (byte)
+//                Serial.read();
+//        if (inByte=='n') { flagShowAddress = !flagShowAddress; }
+//        if (inByte=='p') { flagShowPressure = !flagShowPressure; }
+//        if (inByte=='t') { flagShowTemperature = !flagShowTemperature; }
+//
+//    }
 }
