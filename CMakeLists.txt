@@ -31,7 +31,7 @@ set(${PROJECT_NAME}_SKETCH tfsplatform.ino)
 #### Additional settings for programmer. From programmers.txt
 set(${PROJECT_NAME}_PROGRAMMER avrisp)
 set(${PROJECT_NAME}_PORT /dev/tty.usbserial-1430)
-set(nano.upload.speed 9600)
+set(nano.upload.speed 115200)
 
 ## Verbose build process
 # set(${PROJECT_NAME}_AFLAGS -v)
