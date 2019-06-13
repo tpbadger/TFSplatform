@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include "User_Setup.h"
 /**************************************************************************/
 /*!
 @file takktile_arduino.ino
@@ -33,14 +32,15 @@ v1.3 - Updated the code to reduce transmitted data bytes
 
 #define MAX_STRIPS 1
 #define MAX_SENSORS 5
+#define NUM_MOTORS 5
 
 #define NUM_SENSORS MAX_STRIPS*MAX_SENSORS // reserve addresses for 8 strips with 6 sensors on each
 #define PRECISION 0
+#define MOTOR_THRESHOLD 60
 
 #define FREESCALE_ADDRESS 0xC0
 #define SENSOR_ALL_ON 0x0C
 #define SENSOR_ALL_OFF 0x0D
-
 
 float a0[NUM_SENSORS];
 float b1[NUM_SENSORS];
@@ -54,8 +54,16 @@ float pressureHistory[NUM_SENSORS];
 boolean flagHistoryExists=false;
 
 boolean flagShowAddress=false;
-boolean flagShowPressure=true;
-boolean flagShowTemperature=false;
+boolean flagShowPressure=false;
+
+float pressureVals[NUM_SENSORS];
+int motorPins[5] = {3, 5, 6, 9, 10};
+
+
+float maxVals[5] = {0,0,0,0,0};
+float minVals[5] = {1000, 1000, 1000, 1000, 1000};
+
+bool go = true;
 
 void initialize() {
     // s 0C
@@ -133,6 +141,10 @@ void setup () {
     Wire.begin();
     Serial.begin(9600);
 
+    while (!Serial.available());
+
+    pinMode(3, OUTPUT); // Set PWM output for Vibromotor
+
     checkAddresses(); // check how many sensors are connected
 
     // for each found sensor, read the coefficients ..
@@ -140,8 +152,8 @@ void setup () {
         readCoeffs(addressArray[i],i);
     }
 }
-void readData(byte addressSensor, float* oTemp, float* oPressure)
-{
+
+void readData(byte addressSensor, float* oPressure) {
     // Select sensor
     Wire.beginTransmission(addressSensor>>1);
     Wire.endTransmission();
@@ -153,99 +165,73 @@ void readData(byte addressSensor, float* oTemp, float* oPressure)
 
     Wire.requestFrom(FREESCALE_ADDRESS>>1, 4);
     uint16_t pressure = (( (uint16_t) Wire.read() << 8) | Wire.read()) >> 6;
-    uint16_t temp = (( (uint16_t) Wire.read() << 8) | Wire.read()) >> 6;
 
     // Turn sensor off
     Wire.requestFrom(addressSensor>>1, 1);
 
-    // ------ Ignore the calibrations for the moment
-
-
-
-    float pressureComp = a0[addressSensor] + (b1[addressSensor] + c12[addressSensor] * temp) * pressure + b2[addressSensor] * temp;
-
-
-
-
-    // Calculate temp & pressure
-    *oPressure = ((65.0F / 1023.0F) * pressureComp) + 50.05F; // kPa
-    *oTemp = ((float) temp - 498.0F) / -5.35F + 25.0F; // C
-
+    *oPressure = pressure;
 }
-
 
 void loop() {
 
-    float oTemp=0;
-    float oPressure=0;
-    float p_current=0;
-    float p_history=0;
-    float delta_up=0;
-    float delta_down=0;
+            float oPressure = 0;
+            float p_current = 0;
+            float p_history = 0;
+            float delta_up = 0;
+            float delta_down = 0;
 
-    initialize();
+            initialize();
 
-    for(int i=0;i<addressLength;i++)
-    {
-        if (i>0){
-            Serial.print(',');
-        }
-        readData(addressArray[i], &oTemp, &oPressure);
+            for (int i = 0; i < addressLength; i++) {
 
-        // the calculations of the wrapping
-        // that are used to calculate the minus signs
-        if (flagHistoryExists){
-            p_current=oPressure;
-            p_history=pressureHistory[i];
-            delta_up=p_current-p_history;
-            delta_down=p_history-(p_current-1024);
-            if (delta_up<delta_down){
-                oPressure=p_history+delta_up;
-            }else{
-                oPressure=p_history-delta_down;
+                readData(addressArray[i], &oPressure);
+
+                int motorVal = (int) (oPressure * 0.139);
+
+                motorVal = (motorVal < MOTOR_THRESHOLD) ? 0 : motorVal;
+
+                Serial.print(motorVal);
+                Serial.print(" on channel : ");
+                Serial.println(i);
+
+                analogWrite(motorPins[i], motorVal);
+
+                // the calculations of the wrapping
+                // that are used to calculate the minus signs
+                if (flagHistoryExists) {
+                    p_current = oPressure;
+                    p_history = pressureHistory[i];
+                    delta_up = p_current - p_history;
+                    delta_down = p_history - (p_current - 1024);
+                    if (delta_up < delta_down) {
+                        oPressure = p_history + delta_up;
+                    } else {
+                        oPressure = p_history - delta_down;
+                    }
+                }
+                pressureHistory[i] = oPressure;
+
+                // ------------------------------
+                // Start output to the serial port
+
+                // Print out sensor ID value if the flag was set
+                if (flagShowAddress) {
+                    Serial.print(addressArray[i], HEX);
+                }
+
+                // Print out Pressure values if the flag was set
+                if (flagShowPressure) {
+                    if (flagShowAddress) {
+                        Serial.print(',');
+                    }
+
+                    Serial.print(oPressure, PRECISION);
+                }
             }
-        }
-        pressureHistory[i]=oPressure;
 
+
+        // End output to the serial port
         // ------------------------------
-        // Start output to the serial port
+            flagHistoryExists = false;
 
-        // Print out sensor ID value if the flag was set
-        if (flagShowAddress){
-            Serial.print(addressArray[i],HEX);
-        }
-
-        // Print out Pressure values if the flag was set
-        if (flagShowPressure){
-            if (flagShowAddress){
-                Serial.print(',');
-            }
-
-            Serial.print(oPressure,PRECISION);
-        }
-
-        // Print out Temperature values if the flag was set
-        if (flagShowTemperature){
-            if (flagShowPressure){
-                Serial.print(',');
-            }
-            Serial.print(oTemp,PRECISION);
-        }
-    }
-
-    Serial.println();
-
-    // End output to the serial port
-    // ------------------------------
-    flagHistoryExists=true;
-
-    // Listen to the commands from the serial port
-//    if (Serial.available()){
-//        byte inByte = (byte)
-//                Serial.read();
-//        if (inByte=='n') { flagShowAddress = !flagShowAddress; }
-//        if (inByte=='p') { flagShowPressure = !flagShowPressure; }
-//        if (inByte=='t') { flagShowTemperature = !flagShowTemperature; }
-//
-//    }
 }
