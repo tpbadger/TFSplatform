@@ -1,24 +1,9 @@
 /**************************************************************************/
 /*!
-  @file takktile_arduino.ino
-  @author Eric Bakan & Yaroslav Tenzer
-  @license BSD
+  @file takkstrip_test.ino
+  @author Tom Badger
 
-  Driver for the TakkTile Strip sensor
-
-  This is a library for the TakkTile Strip sensor
-  ----> http://www.takktile.com/product:takkstrip
-
-  @section HISTORY
-
-  v1.0 - First release by Eric Bakan
-  v1.1 - Updated for automatic sensor detection
-  v1.2 - Updated the code for wrapping related issues
-  v1.3 - Updated the code to reduce transmitted data bytes
-
-  @section NOTES
-
-  // Some logic copied from https://github.com/adafruit/Adafruit_MPL115A2/
+  Adapted from the work of Eric Bakan & Yaroslav Tenzer
 
 */
 /**************************************************************************/
@@ -39,8 +24,14 @@
 #define SENSOR_ALL_ON 0x0C
 #define SENSOR_ALL_OFF 0x0D
 
+#define SENSOR_MIN 10
+#define SENSOR_MAX 365
+
+#define DIFF_THRESH 20
+
 #define CALIBRATION_SAMPLES 100
 
+int pwmChannel[5] = {3, 6, 5, 9, 10};
 
 float a0[NUM_SENSORS];
 float b1[NUM_SENSORS];
@@ -61,6 +52,8 @@ boolean flagShowPressure = true;
 boolean flagShowTemperature = false;
 
 boolean calibrateOn = true;
+
+float oldPressure = 0;
 
 void initialize() {
   // s 0C
@@ -113,6 +106,7 @@ void setup () {
   // for each found sensor, read the coefficients ..
   for (int i = 0; i < addressLength; i++) {
     readCoeffs(addressArray[i], i);
+    pinMode(pwmChannel[i], OUTPUT); // set required number of PWM pins to output
   }
 
   if (calibrateOn) {
@@ -154,6 +148,39 @@ void calibrate() {
   }
 }
 
+void processSig(float* oPressure) {
+
+  float currentPressure = *oPressure;
+
+  if (abs(currentPressure - oldPressure) < DIFF_THRESH){
+//    Serial.print(currentPressure);
+//    Serial.print(",");
+//    Serial.println(oldPressure);
+    *oPressure = 0;  
+  }
+
+  if (currentPressure <= SENSOR_MIN || currentPressure >= SENSOR_MAX)
+  {
+    *oPressure = 0;
+  }
+
+  oldPressure = currentPressure;
+
+}
+
+
+void driveHaptic(int channelNum, float* oPressure) {
+
+  if (*oPressure > 0) {
+    float pwmSig = 0.41408450704 * (*oPressure) + 31.8591549296;
+    analogWrite(pwmChannel[channelNum], (int) pwmSig);
+  }
+  else {
+    analogWrite(pwmChannel[channelNum], 0);  
+  }
+}
+
+// driveHaptic(i, &oPressure)
 
 
 void readData(byte addressSensor, float* oTemp, float* oPressure)
@@ -230,6 +257,12 @@ void loop() {
       oPressure -= calibrationPressureOffsets[i];
       oTemp -= calibrationTemperatureOffsets[i];
     }
+
+    oPressure = abs(oPressure);
+    oTemp = abs(oTemp);
+
+    processSig(&oPressure);
+    driveHaptic(i, &oPressure);
 
     // the calculations of the wrapping
     // that are used to calculate the minus signs
