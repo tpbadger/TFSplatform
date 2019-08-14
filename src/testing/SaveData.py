@@ -2,7 +2,7 @@ import serial
 import time
 import os
 # Set serial port options
-ser = serial.Serial("/dev/cu.usbserial-1410")
+ser = serial.Serial("/dev/cu.usbserial-14340")
 ser.baudrate = 9600
 ser.timeout = 1
 
