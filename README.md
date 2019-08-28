@@ -6,7 +6,7 @@ The TFS platform is a prosthetic research platform with tactile feedback develop
 
 The TFS platform is based on the Brunel 2.0 developer hand made by Open Bionics. Bought pre-assembled, it was modified to incorporate five (three operational) tactile sensors embedded in the fingertips and thumb. These sensors are sampled by an Arduino Nano which drives a haptic feedback band of vibromotors using a custom controller made on perfboard.
 
-![front pic](./images/final_pic3.jpg =150x100)
+![front pic](./images/final_pic3.jpg)
 
 ## Operation
 
