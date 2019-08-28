@@ -20,17 +20,9 @@ while log:
         data_file.close()
         log = False
 
-
 data_file.close()
 
 new_fn = time.time()
 current_dir = os.getcwd()
 
 os.rename(current_dir + "/data.csv", current_dir + "/Data/data_" + str(new_fn) + ".csv")
-
-
-
-
-
-
-

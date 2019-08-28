@@ -26,6 +26,8 @@
 
 #define SENSOR_MIN 10
 #define SENSOR_MAX 365
+#define PWM_MIN 0
+#define PWM_MAX 189
 
 #define DIFF_THRESH 20
 
@@ -153,12 +155,10 @@ void processSig(float* oPressure) {
   float currentPressure = *oPressure;
 
   if (abs(currentPressure - oldPressure) < DIFF_THRESH){
-//    Serial.print(currentPressure);
-//    Serial.print(",");
-//    Serial.println(oldPressure);
-    *oPressure = 0;  
+    *oPressure = 0;
   }
 
+  // If the pressure is outside our limits then scrub it to zero
   if (currentPressure <= SENSOR_MIN || currentPressure >= SENSOR_MAX)
   {
     *oPressure = 0;
@@ -172,15 +172,15 @@ void processSig(float* oPressure) {
 void driveHaptic(int channelNum, float* oPressure) {
 
   if (*oPressure > 0) {
-    float pwmSig = 0.41408450704 * (*oPressure) + 31.8591549296;
+    float pwmSig = *oPressure;
+    // map the pressure value into the appropriate PWM signal range
+    pwmSig = map(pwmSig, SENSOR_MIN, SENSOR_MAX, PWM_MIN, PWM_MAX);
     analogWrite(pwmChannel[channelNum], (int) pwmSig);
   }
   else {
-    analogWrite(pwmChannel[channelNum], 0);  
+    analogWrite(pwmChannel[channelNum], 0);
   }
 }
-
-// driveHaptic(i, &oPressure)
 
 
 void readData(byte addressSensor, float* oTemp, float* oPressure)
