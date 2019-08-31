@@ -26,7 +26,7 @@
 
 #define SENSOR_MIN 10
 #define SENSOR_MAX 365
-#define PWM_MIN 0
+#define PWM_MIN 41
 #define PWM_MAX 189
 
 #define DIFF_THRESH 20
